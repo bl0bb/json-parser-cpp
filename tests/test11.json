@@ -1,0 +1,21 @@
+{
+  "library": {
+    "name": "Central Library",
+    "location": {
+      "city": "Springfield",
+      "state": "IL"
+    },
+    "books": [
+      {
+        "title": "1984",
+        "author": "George Orwell",
+        "available": true
+      },
+      {
+        "title": "Brave New World",
+        "author": "Aldous Huxley",
+        "available": false
+      }
+    ]
+  }
+}

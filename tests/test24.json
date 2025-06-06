@@ -1,0 +1,5 @@
+{
+  "line\nbreak": "This key has a newline",
+  "quote\"inKey": "This key has a quote",
+  "backslash\\key": "Yes, even backslashes"
+}

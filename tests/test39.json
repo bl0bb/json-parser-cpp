@@ -1,0 +1,3 @@
+{
+  "variety": ["string", 123, 4.56, true, false, null, {"obj": 1}, [7, 8]]
+}

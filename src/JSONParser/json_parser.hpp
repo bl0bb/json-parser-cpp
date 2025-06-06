@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <vector>
+#include <cmath>
 
 #include "types.hpp"
 #include "array.hpp"
@@ -52,7 +53,7 @@ struct JSONValue {
 class JSONParser {
 public:
     static bool isWhitespace(char ch) {
-        return ch == ' ' || ch == '\n' || ch == '\t';
+        return ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r';
     }
 
     static void skipWhitespace(const char* jsonString, i64* i) {
@@ -86,18 +87,50 @@ public:
     static i64 parseString(const char* jsonString, i64* i, char** str) {
         i64 len = 0;
 
+        i64 backslashCount = 0;
+        
         char* myStr = (char*)malloc(0);
         while (true) {
             char checkCh = jsonString[++(*i)];
             if (!checkCh) {
                 break;
             }
-            if (checkCh == '"') {
-                break;
+            if (checkCh == '\\') {
+                if (backslashCount) {
+                    backslashCount++;
+                } else {
+                    backslashCount = 1;
+                }
+                continue;
             }
-            len++;
-            myStr = (char*)realloc(myStr, (len + 1) * sizeof(char*));
-            myStr[len - 1] = checkCh;
+            if (backslashCount) {
+                len += backslashCount;
+                myStr = (char*)realloc(myStr, (len + 1) * sizeof(char*));
+                for (i64 j = 0; j < backslashCount; j++) {
+                    myStr[len - 1 - j] = '\\';
+                }
+
+                if (checkCh == '"') {
+                    if ((backslashCount & 1) == 0) {
+                        break;
+                    }
+                }
+
+                backslashCount = 0;
+
+                len++;
+                myStr[len - 1] = checkCh;
+                myStr[len] = 0;
+            } else {
+                if (checkCh == '"') {
+                    break;
+                }
+
+                len++;
+                myStr = (char*)realloc(myStr, (len + 1) * sizeof(char*));
+                myStr[len - 1] = checkCh;
+                myStr[len] = 0;
+            }
         }
         myStr[len] = 0;
         *str = myStr;
@@ -114,38 +147,69 @@ public:
 
         char ch = jsonString[i];
         if (ch >= '0' && ch <= '9') {
-            i64 num = 0;
+            f64 num = 0;
+            bool hasDecimal = false;
+            i64 decimalOff;
             while (true) {
-                char checkCh = jsonString[i++];
+                char checkCh = jsonString[i];
                 if (!checkCh) {
                     break;
                 }
-                if (checkCh < '0' || checkCh > '9') {
+                if (checkCh == '.') {
+                    if (hasDecimal) {
+                        throw new std::runtime_error("Multiple decimals in number");
+                    }
+                    hasDecimal = true;
+                    decimalOff = 0;
+                    i++;
+                    continue;
+                } else if (checkCh < '0' || checkCh > '9') {
                     break;
                 }
-                num *= 10;
-                num += checkCh - '0';
+                if (!hasDecimal) {
+                    num *= 10;
+                    num += checkCh - '0';
+                } else {
+                    decimalOff++;
+                    num += f64(checkCh - '0') / std::pow(10, decimalOff);
+                }
+                i++;
             }
+            skipWhitespace(jsonString, &i);
+
             result->type = u8(JSONType::NUMBER);
-            result->value = malloc(sizeof(i64));
-            *(i64*)result->value = num;
+            result->value = malloc(sizeof(f64));
+            *(f64*)result->value = num;
         } else if (ch == '"') {
             char* str;
             i64 len = parseString(jsonString, &i, &str);
+            skipWhitespace(jsonString, &i);
+
             result->type = u8(JSONType::STRING);
             result->value = str;
         } else if (ch == '[') {
             i++;
             skipWhitespace(jsonString, &i);
-            result->type = u8(JSONType::ARRAY);
 
-            result->value = new std::vector<JSONValue*>();
+            result->type = u8(JSONType::ARRAY);
+            
+            result->value = malloc(sizeof(std::vector<JSONValue*>));
+            new (result->value) std::vector<JSONValue*>();
+
             while (true) {
                 skipWhitespace(jsonString, &i);
+
+                char earlyEndCh = jsonString[i];
+                if (earlyEndCh == ']') {
+                    i++;
+                    break;
+                }
+
                 JSONValue* newValue = parse(jsonString, &i);
-                std::cout << "NEW VALUE: " << std::to_string(newValue->type) << "\n";
-                ((std::vector<JSONValue*>*)result->value)->push_back(newValue);
                 skipWhitespace(jsonString, &i);
+
+                ((std::vector<JSONValue*>*)result->value)->push_back(newValue);
+
                 char checkCh = jsonString[i];
                 if (!checkCh) {
                     break;
@@ -160,40 +224,48 @@ public:
                     skipWhitespace(jsonString, &i);
                     continue;
                 }
-                std::cout << "WOMP WOMP 1 " + std::to_string(checkCh) + "\n";
+                throw new std::runtime_error("Expected symbol near end of array");
             }
         } else if (ch == '{') {
             i++;
             skipWhitespace(jsonString, &i);
+
             result->type = u8(JSONType::OBJECT);
-            
-            result->value = new Map<JSONValue*>(0);
+
+            result->value = malloc(sizeof(Map<JSONValue*>));
+            new (result->value) Map<JSONValue*>(0);
+
+
             while (true) {
                 skipWhitespace(jsonString, &i);
+
                 char checkCh = jsonString[i];
-                if (checkCh != '"') {
-                    std::cout << "WOMP WOMP 3 " << std::to_string(i) << " " << std::to_string(checkCh) << "\n";
-                    throw new std::runtime_error("whoopsieessssss");
+                if (!checkCh) {
+                    break;
                 }
                 if (checkCh == '}') {
-                    std::cout << "WOMP WOMP 3 " << std::to_string(i) << " " << std::to_string(checkCh) << "\n";
-                    throw new std::runtime_error("whoopsieessssss");
+                    i++;
+                    break;
+                }
+                if (checkCh != '"') {
+                    throw new std::runtime_error("Missing double quotes for key in object");
                 }
 
                 char* keyStr;
                 i64 keyLen = parseString(jsonString, &i, &keyStr);
+                skipWhitespace(jsonString, &i);
 
                 char colonCh = jsonString[i++];
                 if (colonCh != ':') {
-                    std::cout << "WOMP WOMP 5\n";
+                    throw new std::runtime_error("Missing colon after key in object");
                 }
                 skipWhitespace(jsonString, &i);
 
-                std::cout << "mongodb " << keyStr << " " << std::to_string(i) << "\n";
-                
                 JSONValue* newValue = parse(jsonString, &i);
-                
+                skipWhitespace(jsonString, &i);
+
                 ((Map<JSONValue*>*)result->value)->set(keyStr, newValue);
+                free(keyStr);
 
                 char endCh = jsonString[i];
                 if (endCh == '}') {
@@ -206,10 +278,14 @@ public:
                     skipWhitespace(jsonString, &i);
                     continue;
                 }
-                std::cout << "WOMP WOMP 4 " << std::to_string(endCh) << "\n";
+                throw new std::runtime_error("Expected symbol near end of object");
             }
         } else {
+            skipWhitespace(jsonString, &i);
+
             JSONKeyword keyword = parseKeyword(jsonString, &i);
+            skipWhitespace(jsonString, &i);
+
             if (keyword == JSONKeyword::UNKNOWN) {
                 result->type = u8(JSONType::UNKNOWN);
             } else if (keyword == JSONKeyword::NONE) {
@@ -219,7 +295,7 @@ public:
                 result->value = malloc(sizeof(u8));
                 *(u8*)result->value = u8(keyword) - u8(JSONKeyword::FALSE);
             } else {
-                std::cout << "WOMP WOMP 2\n";
+                throw new std::runtime_error("Unknown keyword");
             }
         }
 

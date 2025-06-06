@@ -1,0 +1,3 @@
+{
+  "mixedArray": [123, "text", true, null, {"key": "value"}, [1, 2]]
+}

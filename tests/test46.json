@@ -1,0 +1,6 @@
+{
+  "structure": {
+    "array": [1, {"obj": [2, 3]}, 4],
+    "flag": true
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "person": {
+    "firstName": "Bob",
+    "lastName": "Smith",
+    "address": {
+      "city": "New York",
+      "zip": "10001"
+    }
+  }
+}

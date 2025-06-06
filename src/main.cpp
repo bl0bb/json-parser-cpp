@@ -16,46 +16,57 @@ void addStringInJson(std::string& jsonString, std::string str, i64 depth) {
             str.insert(i + 1, depthStr);
         }
     }
+    jsonString += str;
 }
 
 std::string traverseJson(JSONValue* json, i64 depth) {
     std::string jsonString = "";
 
     if (json->type == u8(JSONType::NONE)) {
-        addStringInJson(jsonString, "null", depth);
+        jsonString += "null";
     } else if (json->type == u8(JSONType::NUMBER)) {
-        addStringInJson(jsonString, std::to_string(*(i64*)json->value), depth);
+        jsonString += std::to_string(*(f64*)json->value);
     } else if (json->type == u8(JSONType::STRING)) {
-        addStringInJson(jsonString, "\"", depth);
+        jsonString += "\"";
         addStringInJson(jsonString, (char*)json->value, depth);
-        addStringInJson(jsonString, "\"", depth);
+        jsonString += "\"";
     } else if (json->type == u8(JSONType::ARRAY)) {
-        jsonString += "[\n";
+        addStringInJson(jsonString, "[\n", depth + 1);
         std::vector<JSONValue*>* arr = (std::vector<JSONValue*>*)json->value;
 
         for (i64 i = 0; i < arr->size(); i++) {
-            addStringInJson(jsonString, traverseJson((*arr)[i], depth + 1), depth + 1);
-            addStringInJson(jsonString, ",\n", depth + 1);
+            jsonString += traverseJson((*arr)[i], depth + 1);
+            if (i < arr->size() - 1) {
+                jsonString += ",";
+                addStringInJson(jsonString, "\n", depth + 1);
+            } else {
+                addStringInJson(jsonString, "\n", depth);
+            }
         }
 
         jsonString += "]";
     } else if (json->type == u8(JSONType::OBJECT)) {
-        jsonString += "{\n";
+        addStringInJson(jsonString, "{\n", depth + 1);
         Map<JSONValue*>* arr = (Map<JSONValue*>*)json->value;
 
         for (i64 i = 0; i < arr->size; i++) {
-            addStringInJson(jsonString, "\"" + std::string(arr->hashTable[i]) + "\": ", depth + 1);
-            addStringInJson(jsonString, traverseJson(arr->dataTable[i], depth + 1), depth + 1);
-            addStringInJson(jsonString, ",\n", depth + 1);
+            jsonString += "\"" + std::string(arr->hashTable[i]) + "\": ";
+            jsonString += traverseJson(arr->dataTable[i], depth + 1);
+            if (i < arr->size - 1) {
+                jsonString += ",";
+                addStringInJson(jsonString, "\n", depth + 1);
+            } else {
+                addStringInJson(jsonString, "\n", depth);
+            }
         }
         
         jsonString += "}";
     } else if (json->type == u8(JSONType::BOOL)) {
         u8 value = *(u8*)json->value;
         if (value) {
-            addStringInJson(jsonString, "true", depth);
+            jsonString += "true";
         } else {
-            addStringInJson(jsonString, "false", depth);
+            jsonString += "false";
         }
     } else if (json->type == u8(JSONType::UNKNOWN)) {
         std::cout << "ERROR: UNKNOWN TYPE\n";
@@ -80,7 +91,12 @@ int runTest(int testN) {
     }
 
     i64 i = 0;
-    JSONValue* json = JSONParser::parse(jsonStr.c_str(), &i);
+    JSONValue* json;
+    try {
+        json = JSONParser::parse(jsonStr.c_str(), &i);
+    } catch (std::runtime_error* e) {
+        std::cout << "TEST FAILED: " << e->what() << "\n";
+    }
 
     std::string formattedString = traverseJson(json, 0);
     std::cout << "FORMATTED:\n" + formattedString + "\n";
@@ -89,13 +105,13 @@ int runTest(int testN) {
 }
 
 int runTests() {
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 47; i++) {
         int code = runTest(i);
         if (code != 0) {
-            std::cout << "FAILED TEST " + std::to_string(i) + " " + std::to_string(code) + "\n";
+            std::cout << "FAILED TEST " + std::to_string(i + 1) + " " + std::to_string(code) + "\n";
             return code;
         }
-        std::cout << "PASSED TEST " + std::to_string(i) + "\n";
+        std::cout << "PASSED TEST " + std::to_string(i + 1) + "\n";
     }
     return 0;
 }

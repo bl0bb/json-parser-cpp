@@ -1,0 +1,8 @@
+{
+  "nothing": null,
+  "arrayOfNulls": [null, null, null],
+  "objectWithNulls": {
+    "a": null,
+    "b": "something"
+  }
+}

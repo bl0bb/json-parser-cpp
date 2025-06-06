@@ -1,0 +1,12 @@
+{
+  "items": [
+    {"id": 1, "value": "x"},
+    {"id": 2, "value": "x"},
+    {"id": 3, "value": "x"},
+    {"id": 4, "value": "x"}
+  ],
+  "metadata": {
+    "count": 4,
+    "unique": false
+  }
+}

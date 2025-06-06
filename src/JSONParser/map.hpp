@@ -32,10 +32,11 @@ public:
             size++;
 
             hashTable = (char**)realloc(hashTable, size * sizeof(char*));
-            hashTable[size - 1] = (char*)malloc(strlen(key) * sizeof(char));
+            hashTable[size - 1] = (char*)malloc((strlen(key) + 1) * sizeof(char));
             strcpy(hashTable[size - 1], key);
+            hashTable[size - 1][strlen(key)] = 0;
 
-            dataTable = (T*)realloc(dataTable, size * sizeof(T));
+            dataTable = (T*)realloc((T*)dataTable, size * sizeof(T));
             dataTable[size - 1] = data;
             
             return;
