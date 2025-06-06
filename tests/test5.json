@@ -1,0 +1,13 @@
+{
+    "name": "john",
+    "last_name": "doe",
+    "age": 5,
+    "likes": [
+        1,
+        "dogs",
+        [
+            7,
+            "meow"
+        ]
+    ]
+}
