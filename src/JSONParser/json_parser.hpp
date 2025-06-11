@@ -26,10 +26,10 @@ enum class JSONKeyword : i8 {
 /*
 types
 
-0 = null -> u8 = 0
+0 = null -> value not present
 0 = number -> i64
 1 = string -> char*
-2 = array -> JSONValue*
+2 = array -> std::vector<JSONValue*>
 3 = object -> Map<JSONValue*>
 4 = bool -> bool
 
@@ -48,6 +48,36 @@ enum class JSONType : i8 {
 struct JSONValue {
     u8 type;
     void* value;
+
+    void freeSelf() {
+        if (type == u8(JSONType::UNKNOWN) || type == u8(JSONType::NONE)) {
+            return;
+        }
+        
+        free(value);
+    }
+
+    void freeAll() {
+        if (type == u8(JSONType::UNKNOWN) || type == u8(JSONType::NONE)) {
+            return;
+        }
+
+        if (type == u8(JSONType::ARRAY)) {
+            std::vector<JSONValue*>* arr = (std::vector<JSONValue*>*)value;
+            for (u8 i = 0; i < arr->size(); i++) {
+                (*arr)[i]->freeAll();
+            }
+            arr->clear();
+        } else if (type == u8(JSONType::OBJECT)) {
+            Map<JSONValue*>* map = (Map<JSONValue*>*)value;
+            for (i64 i = 0; i < map->size; i++) {
+                map->dataTable[i]->freeAll();
+            }
+            map->freeMap();
+        }
+
+        free(value);
+    }
 };
 
 class JSONParser {
@@ -157,7 +187,7 @@ public:
                 }
                 if (checkCh == '.') {
                     if (hasDecimal) {
-                        throw new std::runtime_error("Multiple decimals in number");
+                        throw new std::runtime_error("Multiple decimal points in number");
                     }
                     hasDecimal = true;
                     decimalOff = 0;

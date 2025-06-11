@@ -22,4 +22,4 @@ CC = g++
 
 
 all:
-	$(CC) -std=c++$(CC_VERSION) $(ERROR_FLAGS) $(FILES) -g -o main.exe
+	$(CC) -std=c++$(CC_VERSION) $(ERROR_FLAGS) $(FILES) -o main

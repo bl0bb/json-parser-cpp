@@ -5,6 +5,8 @@
 
 #include "JSONParser/json_parser.hpp"
 
+constexpr u32 TEST_COUNT = 67;
+
 void addStringInJson(std::string& jsonString, std::string str, i64 depth) {
     std::string depthStr = "";
     for (i64 i = 0; i < depth * 2; i++) {
@@ -31,8 +33,12 @@ std::string traverseJson(JSONValue* json, i64 depth) {
         addStringInJson(jsonString, (char*)json->value, depth);
         jsonString += "\"";
     } else if (json->type == u8(JSONType::ARRAY)) {
-        addStringInJson(jsonString, "[\n", depth + 1);
+        jsonString += "[";
         std::vector<JSONValue*>* arr = (std::vector<JSONValue*>*)json->value;
+
+        if (arr->size() > 0) {
+            addStringInJson(jsonString, "\n", depth + 1);
+        }
 
         for (i64 i = 0; i < arr->size(); i++) {
             jsonString += traverseJson((*arr)[i], depth + 1);
@@ -46,13 +52,17 @@ std::string traverseJson(JSONValue* json, i64 depth) {
 
         jsonString += "]";
     } else if (json->type == u8(JSONType::OBJECT)) {
-        addStringInJson(jsonString, "{\n", depth + 1);
-        Map<JSONValue*>* arr = (Map<JSONValue*>*)json->value;
+        jsonString += "{";
+        Map<JSONValue*>* map = (Map<JSONValue*>*)json->value;
 
-        for (i64 i = 0; i < arr->size; i++) {
-            jsonString += "\"" + std::string(arr->hashTable[i]) + "\": ";
-            jsonString += traverseJson(arr->dataTable[i], depth + 1);
-            if (i < arr->size - 1) {
+        if (map->size > 0) {
+            addStringInJson(jsonString, "\n", depth + 1);
+        }
+
+        for (i64 i = 0; i < map->size; i++) {
+            jsonString += "\"" + std::string(map->hashTable[i]) + "\": ";
+            jsonString += traverseJson(map->dataTable[i], depth + 1);
+            if (i < map->size - 1) {
                 jsonString += ",";
                 addStringInJson(jsonString, "\n", depth + 1);
             } else {
@@ -77,7 +87,7 @@ std::string traverseJson(JSONValue* json, i64 depth) {
     return jsonString;
 }
 
-int runTest(int testN) {
+bool runTest(int testN) {
     std::ifstream file("tests/test" + std::to_string(testN + 1) + ".json");  // Replace with your file name
     std::string jsonStr;
 
@@ -92,35 +102,39 @@ int runTest(int testN) {
 
     i64 i = 0;
     JSONValue* json;
+    bool didFail;
     try {
         json = JSONParser::parse(jsonStr.c_str(), &i);
+        didFail = false;
     } catch (std::runtime_error* e) {
         std::cout << "TEST FAILED: " << e->what() << "\n";
+        didFail = true;
     }
 
     std::string formattedString = traverseJson(json, 0);
     std::cout << "FORMATTED:\n" + formattedString + "\n";
 
-    return 0;
+    json->freeAll();
+
+    return didFail;
 }
 
 int runTests() {
-    for (int i = 0; i < 47; i++) {
-        int code = runTest(i);
-        if (code != 0) {
-            std::cout << "FAILED TEST " + std::to_string(i + 1) + " " + std::to_string(code) + "\n";
-            return code;
+    int passCount = 0;
+    for (int i = 0; i < TEST_COUNT; i++) {
+        bool testCode = runTest(i);
+        if (testCode == 1) {
+            std::cout << "FAILED TEST " + std::to_string(i + 1) + "\n";
+            continue;
         }
+        passCount++;
         std::cout << "PASSED TEST " + std::to_string(i + 1) + "\n";
     }
-    return 0;
+    return passCount;
 }
 
 int main(int const argc, char const*const* argv) {
-    int code = runTests();
-    if (code != 0) {
-        std::cout << "FAILED " + std::to_string(code) + "\n";
-    }
-    std::cout << "SUCCESS\n";
+    int passCount = runTests();
+    std::cout << "PASSED: " << passCount << "/" << TEST_COUNT << "\n";
     return 0;
 }

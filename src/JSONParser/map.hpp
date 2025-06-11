@@ -44,6 +44,15 @@ public:
 
         dataTable[index] = data;
     }
+
+    void freeMap() {
+        for (i64 i = 0; i < size; i++) {
+            free(hashTable[i]);
+            free(dataTable[i]);
+        }
+        free(hashTable);
+        free(dataTable);
+    }
 };
 
 #endif
